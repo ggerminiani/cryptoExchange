@@ -13,7 +13,6 @@ try:
     for item in info['balances']:
         if float(item['free']) > 0:
             print(item)
-
 except BinanceAPIException as e:
     print(e.status_code)
     print(e.message)

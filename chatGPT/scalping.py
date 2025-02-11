@@ -1,3 +1,5 @@
+# python3
+# Scalping strategy - CRYPTOCOINS
 import logging
 import time
 
