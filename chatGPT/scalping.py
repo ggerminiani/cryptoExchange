@@ -1,6 +1,3 @@
-# python3
-# Scalping strategy - CRYPTOCOINS
-import logging
 import time
 
 import numpy as np
@@ -9,9 +6,12 @@ from binance import BinanceAPIException
 from binance.client import Client
 
 import config
+from tools.csv import initialize_csv, log_trade
+from tools.logging import setup_logging, log_message
 
-# Configuração de logging
-logging.basicConfig(filename="trading_bot.log", level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+# Inicializar logging e CSV
+setup_logging()
+initialize_csv()
 
 # Inicializa a API da Binance
 client = Client(api_key=config.API, api_secret=config.KEY)
@@ -35,7 +35,7 @@ def get_balance(asset="BRL"):
             if balance["asset"] == asset:
                 return float(balance["free"])
     except BinanceAPIException as e:
-        logging.error(f"Erro ao obter saldo: {e.message}")
+        log_message("error", f"Erro ao obter saldo: {e.message}")
         return 0.0
 
 
@@ -54,7 +54,7 @@ def get_historical_data(symbol, interval, limit=50):
         df["volume"] = df["volume"].astype(float)
         return df[["timestamp", "open", "close", "high", "low", "volume"]]
     except BinanceAPIException as e:
-        logging.error(f"Erro ao obter dados históricos: {e.message}")
+        log_message("error", f"Erro ao obter dados históricos: {e.message}")
         return None
 
 
@@ -72,7 +72,7 @@ def calculate_indicators(df):
         df["RSI"] = 100 - (100 / (1 + rs))
         return df
     except BinanceAPIException as e:
-        logging.error(f"Erro ao calcular indicadores: {e.message}")
+        log_message("error", f"Erro ao calcular indicadores: {e.message}")
         return None
 
 
@@ -83,51 +83,27 @@ def check_signals(df):
         previous_row = df.iloc[-2]
         prev_prev_row = df.iloc[-3]
 
-        print(
-            f"Última vela: Preço {last_row['close']}, EMA5: {last_row['EMA_5']}, EMA13: {last_row['EMA_13']}, RSI: {last_row['RSI']}")
-        logging.info(
-            f"Última vela: Preço {last_row['close']}, EMA5: {last_row['EMA_5']}, EMA13: {last_row['EMA_13']}, RSI: {last_row['RSI']}")
+        log_message("info",
+                    f"Última vela: Preço {last_row['close']}, EMA5: {last_row['EMA_5']}, EMA13: {last_row['EMA_13']}, RSI: {last_row['RSI']}")
 
         if (prev_prev_row["EMA_5"] < prev_prev_row["EMA_13"] and previous_row["EMA_5"] < previous_row["EMA_13"] and
             last_row["EMA_5"] > last_row["EMA_13"]) and last_row["RSI"] < 40:
-            logging.info("📈 Sinal de COMPRA detectado!")
-            print("📈 Sinal de COMPRA detectado!")
+            log_message("info", "📈 Sinal de COMPRA detectado!")
             execute_trade("BUY", last_row["close"])
         elif (prev_prev_row["EMA_5"] > prev_prev_row["EMA_13"] and previous_row["EMA_5"] > previous_row["EMA_13"] and
               last_row["EMA_5"] < last_row["EMA_13"]) and last_row["RSI"] > 60:
-            logging.info("📉 Sinal de VENDA detectado!")
-            print("📉 Sinal de VENDA detectado!")
+            log_message("info", "📉 Sinal de VENDA detectado!")
             execute_trade("SELL", last_row["close"])
     except BinanceAPIException as e:
-        logging.error(f"Erro ao verificar sinais de trade: {e.message}")
+        log_message("error", f"Erro ao verificar sinais de trade: {e.message}")
 
 
 # Função para executar trade simulado
 def execute_trade(order_type, price):
-    global trade_log
-    order_amount = get_balance("BRL") * TRADE_PERCENTAGE  # Quantidade baseada no saldo
-    trade_log.append({"type": order_type, "price": price, "amount": order_amount})
-    logging.info(f"[SIMULAÇÃO] Ordem {order_type} executada a {price} BRL com {order_amount} BRL")
-    print(f"[SIMULAÇÃO] Ordem {order_type} executada a {price} BRL com {order_amount} BRL")
+    order_amount = get_balance("BRL") * TRADE_PERCENTAGE
+    log_trade(order_type, price, order_amount)
+    log_message("info", f"[SIMULAÇÃO] Ordem {order_type} executada a {price} BRL com {order_amount} BRL")
 
-
-# Função para calcular resultado final
-def calculate_results():
-    profit = 0
-    last_buy_price = None
-    for trade in trade_log:
-        if trade["type"] == "BUY":
-            last_buy_price = trade["price"]
-        elif trade["type"] == "SELL" and last_buy_price:
-            profit += (trade["price"] - last_buy_price) * trade["amount"] / last_buy_price
-            last_buy_price = None
-    logging.info(f"Lucro/prejuízo simulado: {profit:.2f} BRL")
-    print(f"Lucro/prejuízo simulado: {profit:.2f} BRL")
-
-
-# Variáveis para monitoramento de lucro/prejuízo
-initial_balance = get_balance("BRL")
-trade_log = []
 
 # Loop principal
 if __name__ == "__main__":
