@@ -101,8 +101,20 @@ def check_signals(df):
 # Função para executar trade simulado
 def execute_trade(order_type, price):
     order_amount = get_balance("BRL") * TRADE_PERCENTAGE
-    log_trade(order_type, price, order_amount)
-    log_message("info", f"[SIMULAÇÃO] Ordem {order_type} executada a {price} BRL com {order_amount} BRL")
+    if order_amount <= 0:
+        log_message("warning", "Saldo insuficiente para executar a ordem.")
+        return
+
+    if SIMULATED_MODE:
+        log_trade(order_type, price, order_amount)
+        log_message("info", f"[SIMULAÇÃO] Ordem {order_type} executada a {price} BRL com {order_amount} BRL")
+    else:
+        try:
+            order = client.order_market(symbol=ticker, side=order_type, quantity=order_amount)
+            log_trade(order_type, price, order_amount)
+            log_message("info", f"[REAL] Ordem {order_type} enviada com sucesso: {order}")
+        except BinanceAPIException as e:
+            log_message("error", f"Erro ao executar ordem real: {e.message}")
 
 
 # Loop principal
