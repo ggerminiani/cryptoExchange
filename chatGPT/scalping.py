@@ -1,3 +1,5 @@
+import os
+import sys
 import time
 
 import numpy as np
@@ -5,6 +7,7 @@ import pandas as pd
 from binance import BinanceAPIException
 from binance.client import Client
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import config
 from tools.csv import initialize_csv, log_trade
 from tools.logging import setup_logging, log_message
